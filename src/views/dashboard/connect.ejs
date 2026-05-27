@@ -1,0 +1,122 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>🔌 Conectar Bot</h1>
+        <p class="muted">Conecte o <%= bot.name %> ao WhatsApp via QR Code ou Pair Code</p>
+      </div>
+      <div class="bot-status" id="botStatusBadge">
+        <span class="status-dot status-<%= botState.status %>"></span>
+        <span id="botStatusText"><%= botState.status %></span>
+      </div>
+    </header>
+
+    <div class="connect-grid">
+      <div class="card">
+        <h2>📱 QR Code</h2>
+        <p class="muted">Escaneie pelo WhatsApp → Aparelhos Conectados</p>
+        <div class="qr-area" id="qrArea">
+          <% if (botState.qr) { %>
+            <img src="<%= botState.qr %>" alt="QR Code" id="qrImage" />
+          <% } else { %>
+            <div class="qr-placeholder">
+              <div class="qr-icon">📷</div>
+              <p>Clique em "Gerar QR Code"</p>
+            </div>
+          <% } %>
+        </div>
+        <button class="btn btn-primary btn-block" id="btnQR">🔄 Gerar QR Code</button>
+      </div>
+
+      <div class="card">
+        <h2>🔢 Pair Code (8 dígitos)</h2>
+        <p class="muted">Receba um código para inserir no WhatsApp → Aparelhos Conectados → Conectar com número</p>
+        <div class="form-group">
+          <label>📞 Seu número WhatsApp (com DDI)</label>
+          <input type="text" id="phoneNumber" placeholder="244949926074" value="<%= bot.number %>" />
+        </div>
+        <div class="pair-area" id="pairArea">
+          <% if (botState.pairingCode) { %>
+            <div class="pair-code"><%= botState.pairingCode %></div>
+            <p class="muted">Insira este código no WhatsApp</p>
+          <% } else { %>
+            <div class="qr-placeholder">
+              <div class="qr-icon">🔢</div>
+              <p>Clique em "Gerar Pair Code"</p>
+            </div>
+          <% } %>
+        </div>
+        <button class="btn btn-primary btn-block" id="btnPair">🔄 Gerar Pair Code</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ Controles</h3>
+      <div class="button-row">
+        <button class="btn btn-danger" id="btnLogout">🚪 Desconectar / Logout</button>
+        <span class="muted" id="connStatus">Status: <%= botState.status %></span>
+      </div>
+      <% if (botState.user) { %>
+        <div class="alert alert-success" style="margin-top: 1rem;">
+          ✅ Conectado como: <strong><%= botState.user.id %></strong>
+        </div>
+      <% } %>
+    </div>
+  </main>
+</div>
+
+<script>
+  const socket = io();
+  const qrArea = document.getElementById('qrArea');
+  const pairArea = document.getElementById('pairArea');
+  const statusText = document.getElementById('botStatusText');
+  const statusDot = document.querySelector('.status-dot');
+  const connStatus = document.getElementById('connStatus');
+
+  socket.on('bot:status', (data) => {
+    statusText.textContent = data.status;
+    statusDot.className = 'status-dot status-' + data.status;
+    connStatus.textContent = 'Status: ' + data.status;
+
+    if (data.qr) {
+      qrArea.innerHTML = `<img src="${data.qr}" alt="QR Code" />`;
+    }
+    if (data.pairingCode) {
+      pairArea.innerHTML = `<div class="pair-code">${data.pairingCode}</div><p class="muted">Insira este código no WhatsApp</p>`;
+    }
+    if (data.status === 'connected') {
+      qrArea.innerHTML = `<div class="qr-placeholder success"><div class="qr-icon">✅</div><p>Bot conectado!</p></div>`;
+      pairArea.innerHTML = `<div class="qr-placeholder success"><div class="qr-icon">✅</div><p>Bot conectado!</p></div>`;
+    }
+  });
+
+  socket.on('bot:error', (data) => alert('Erro: ' + data.message));
+
+  document.getElementById('btnQR').onclick = async () => {
+    qrArea.innerHTML = '<div class="qr-placeholder"><div class="spinner"></div><p>Gerando QR...</p></div>';
+    await fetch('/api/bot/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'qr' }),
+    });
+  };
+
+  document.getElementById('btnPair').onclick = async () => {
+    const phone = document.getElementById('phoneNumber').value.trim();
+    if (!phone) return alert('Insira o número!');
+    pairArea.innerHTML = '<div class="qr-placeholder"><div class="spinner"></div><p>Gerando código...</p></div>';
+    await fetch('/api/bot/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'pair', phoneNumber: phone }),
+    });
+  };
+
+  document.getElementById('btnLogout').onclick = async () => {
+    if (!confirm('Tem certeza? Isso vai desconectar o bot.')) return;
+    await fetch('/api/bot/logout', { method: 'POST' });
+  };
+</script>
+<%- include('../partials/footer') %>

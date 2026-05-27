@@ -1,0 +1,130 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>👥 Usuários</h1>
+        <p class="muted">Gerencie contas Free, Premium e o Dono</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Nome</th>
+              <th>WhatsApp</th>
+              <th>Tipo</th>
+              <th>Premium até</th>
+              <th>Status</th>
+              <th>Último login</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(u => { %>
+              <tr>
+                <td><strong><%= u.username %></strong></td>
+                <td><%= u.name || '—' %></td>
+                <td><%= u.whatsappNumber || '—' %></td>
+                <td>
+                  <% if (u.role === 'owner') { %><span class="chip chip-owner">👑 Dono</span>
+                  <% } else if (u.role === 'premium') { %><span class="chip chip-premium">⭐ Premium</span>
+                  <% } else { %><span class="chip chip-free">🆓 Free</span><% } %>
+                </td>
+                <td><%= u.premiumUntil ? new Date(u.premiumUntil).toLocaleDateString('pt-BR') : '—' %></td>
+                <td>
+                  <% if (u.active) { %><span class="chip chip-success">Ativo</span>
+                  <% } else { %><span class="chip chip-muted">Bloqueado</span><% } %>
+                </td>
+                <td><%= u.lastLogin ? new Date(u.lastLogin).toLocaleString('pt-BR') : '—' %></td>
+                <td>
+                  <% if (u.role !== 'owner') { %>
+                    <button class="btn btn-sm" onclick='editUser(<%- JSON.stringify({ id: u._id, role: u.role, active: u.active, name: u.name, whatsappNumber: u.whatsappNumber }) %>)'>✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="delUser('<%= u._id %>')">🗑️</button>
+                  <% } else { %>
+                    <span class="muted small">protegido</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal edição -->
+    <div class="modal" id="editModal">
+      <div class="modal-content">
+        <h2>✏️ Editar usuário</h2>
+        <form id="editForm">
+          <input type="hidden" id="editId" />
+          <div class="form-group">
+            <label>Nome</label>
+            <input type="text" id="editName" />
+          </div>
+          <div class="form-group">
+            <label>WhatsApp</label>
+            <input type="text" id="editWhats" />
+          </div>
+          <div class="form-group">
+            <label>Tipo de conta</label>
+            <select id="editRole">
+              <option value="free">🆓 Free</option>
+              <option value="premium">⭐ Premium</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Premium até (opcional)</label>
+            <input type="date" id="editPremiumUntil" />
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="editActive" /> Ativo</label>
+          </div>
+          <div class="button-row">
+            <button type="submit" class="btn btn-primary">💾 Salvar</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  function editUser(u) {
+    document.getElementById('editId').value = u.id;
+    document.getElementById('editName').value = u.name || '';
+    document.getElementById('editWhats').value = u.whatsappNumber || '';
+    document.getElementById('editRole').value = u.role;
+    document.getElementById('editActive').checked = u.active;
+    document.getElementById('editModal').classList.add('open');
+  }
+  function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editId').value;
+    const body = {
+      name: document.getElementById('editName').value,
+      whatsappNumber: document.getElementById('editWhats').value,
+      role: document.getElementById('editRole').value,
+      active: document.getElementById('editActive').checked,
+      premiumUntil: document.getElementById('editPremiumUntil').value || null,
+    };
+    await fetch('/api/users/' + id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    location.reload();
+  });
+
+  async function delUser(id) {
+    if (!confirm('Deletar este usuário?')) return;
+    await fetch('/api/users/' + id, { method: 'DELETE' });
+    location.reload();
+  }
+</script>
+<%- include('../partials/footer') %>
