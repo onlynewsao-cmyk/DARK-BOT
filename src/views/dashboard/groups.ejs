@@ -1,0 +1,305 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>👥 Gestão de Grupos</h1>
+        <p class="muted">Gerencie todos os grupos onde o bot está. Total: <strong><%= groups.length %></strong></p>
+      </div>
+      <button class="btn btn-primary" onclick="refresh()">🔄 Atualizar</button>
+    </header>
+
+    <% if (!groups.length) { %>
+      <div class="alert alert-info">
+        <span>ℹ️</span>
+        <span>Bot não está em nenhum grupo ou não está conectado. Verifique a página <a href="/dashboard/connect">Conectar Bot</a>.</span>
+      </div>
+    <% } %>
+
+    <div class="form-group">
+      <input type="text" id="searchInput" placeholder="🔍 Buscar grupo..." oninput="filterGroups(this.value)" />
+    </div>
+
+    <div class="groups-grid">
+      <% groups.forEach(g => {
+        const settings = settingsMap[g.id] || {};
+      %>
+        <div class="card group-card" data-name="<%= (g.subject || '').toLowerCase() %>" style="<%= settings.botEnabled === false ? 'opacity:.6' : '' %>">
+          <div class="group-header">
+            <div class="group-avatar"><%= (g.subject || '?').charAt(0).toUpperCase() %></div>
+            <div style="flex:1;min-width:0">
+              <h3 style="margin:0;font-size:1.05rem"><%= g.subject || 'Sem nome' %></h3>
+              <div class="muted small">👥 <%= g.participants?.length || 0 %> membros</div>
+              <div class="muted small" style="word-break:break-all;font-family:'JetBrains Mono',monospace;font-size:.7rem"><%= g.id %></div>
+            </div>
+          </div>
+
+          <% if (g.desc) { %>
+            <p class="muted small" style="margin:.5rem 0"><%= (g.desc || '').slice(0,150) %><%= g.desc?.length > 150 ? '...' : '' %></p>
+          <% } %>
+
+          <div class="group-stats">
+            <span class="chip">👑 <%= g.participants?.filter(p=>p.admin).length || 0 %> admins</span>
+            <% if (settings.botEnabled === false) { %>
+              <span class="chip" style="color:var(--neon-red)">🔴 Bot OFF</span>
+            <% } else { %>
+              <span class="chip chip-success">🟢 Bot ON</span>
+            <% } %>
+            <% if (settings.antilink) { %><span class="chip chip-info">🛡️ Antilink</span><% } %>
+            <% if (settings.antispam) { %><span class="chip chip-info">🛡️ Antispam</span><% } %>
+            <% if (settings.welcome) { %><span class="chip chip-info">👋 Welcome</span><% } %>
+          </div>
+
+          <div class="button-row" style="margin-top:.75rem">
+            <button class="btn btn-sm" onclick="openSettings('<%= g.id %>', '<%= (g.subject || '').replace(/'/g, "\\'") %>')">⚙️ Config</button>
+            <button class="btn btn-sm" onclick="openBroadcast('<%= g.id %>', '<%= (g.subject || '').replace(/'/g, "\\'") %>')">📢 Broadcast</button>
+            <button class="btn btn-sm" onclick="viewMembers('<%= g.id %>')">👥 Membros</button>
+            <button class="btn btn-sm btn-danger" onclick="leaveGroup('<%= g.id %>', '<%= (g.subject || '').replace(/'/g, "\\'") %>')">🚪 Sair</button>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Modal: Config do grupo -->
+    <div class="modal" id="settingsModal">
+      <div class="modal-content" style="max-width:600px">
+        <h2>⚙️ <span id="settingsGroupName"></span></h2>
+        <form id="settingsForm">
+          <input type="hidden" id="settingsJid" />
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setEnabled" /> 🟢 Bot ATIVO neste grupo</label>
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setAntilink" /> 🛡️ Anti-link (remove links automáticos)</label>
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setAntispam" /> 🛡️ Anti-spam (3 avisos = ban)</label>
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setWelcome" /> 👋 Mensagem de boas-vindas</label>
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setGoodbye" /> 👋 Mensagem de despedida</label>
+          </div>
+          <div class="form-group form-check">
+            <label><input type="checkbox" id="setOnlyAdmins" /> 🔐 Só admins podem usar bot</label>
+          </div>
+          <div class="form-group">
+            <label>👋 Boas-vindas customizada (opcional - use @user e @grupo)</label>
+            <textarea id="setCustomWelcome" rows="3" placeholder="Deixe vazio pra usar a padrão"></textarea>
+          </div>
+          <div class="form-group">
+            <label>👋 Despedida customizada</label>
+            <textarea id="setCustomGoodbye" rows="2" placeholder="Deixe vazio pra usar a padrão"></textarea>
+          </div>
+          <div class="button-row">
+            <button type="submit" class="btn btn-primary">💾 Salvar</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal('settingsModal')">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Broadcast pro grupo -->
+    <div class="modal" id="broadcastModal">
+      <div class="modal-content">
+        <h2>📢 Broadcast para <span id="broadcastGroupName"></span></h2>
+        <form id="broadcastForm">
+          <input type="hidden" id="broadcastJid" />
+          <div class="form-group">
+            <label>📝 Mensagem</label>
+            <textarea id="broadcastMsg" rows="5" required placeholder="Sua mensagem aqui..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>🎁 Mídia (opcional)</label>
+            <select id="broadcastMedia">
+              <option value="">— sem mídia —</option>
+              <% medias.forEach(m => { %>
+                <option value="<%= m.url %>" data-type="<%= m.type %>">[<%= m.type %>] <%= m.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="button-row">
+            <button type="submit" class="btn btn-primary">📤 Enviar</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal('broadcastModal')">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Membros -->
+    <div class="modal" id="membersModal">
+      <div class="modal-content" style="max-width:700px">
+        <h2>👥 Membros do Grupo</h2>
+        <div id="membersList" style="max-height:60vh;overflow:auto">Carregando...</div>
+        <div class="button-row mt-2">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('membersModal')">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<style>
+  .groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+  .group-card {
+    transition: all 0.3s;
+  }
+  .group-card:hover {
+    border-color: var(--neon-cyan);
+    transform: translateY(-2px);
+  }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .5rem;
+  }
+  .group-avatar {
+    width: 48px;
+    height: 48px;
+    background: var(--gradient-1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 1.3rem;
+    color: white;
+    flex-shrink: 0;
+  }
+  .group-stats {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    margin-top: .5rem;
+  }
+  .member-item {
+    display: flex;
+    justify-content: space-between;
+    padding: .5rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .85rem;
+  }
+  .member-item .num { font-family: 'JetBrains Mono', monospace; color: var(--neon-cyan); }
+</style>
+
+<script>
+  function filterGroups(text) {
+    const t = text.toLowerCase();
+    document.querySelectorAll('.group-card').forEach(g => {
+      g.style.display = g.dataset.name?.includes(t) ? '' : 'none';
+    });
+  }
+
+  function refresh() { location.reload(); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  async function openSettings(jid, name) {
+    document.getElementById('settingsJid').value = jid;
+    document.getElementById('settingsGroupName').textContent = name;
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(jid) + '/settings');
+      const s = await r.json();
+      document.getElementById('setEnabled').checked = s.botEnabled !== false;
+      document.getElementById('setAntilink').checked = !!s.antilink;
+      document.getElementById('setAntispam').checked = !!s.antispam;
+      document.getElementById('setWelcome').checked = s.welcome !== false;
+      document.getElementById('setGoodbye').checked = s.goodbye !== false;
+      document.getElementById('setOnlyAdmins').checked = !!s.onlyAdmins;
+      document.getElementById('setCustomWelcome').value = s.customWelcome || '';
+      document.getElementById('setCustomGoodbye').value = s.customGoodbye || '';
+    } catch (e) {}
+    document.getElementById('settingsModal').classList.add('open');
+  }
+
+  document.getElementById('settingsForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const jid = document.getElementById('settingsJid').value;
+    const data = {
+      botEnabled: document.getElementById('setEnabled').checked,
+      antilink: document.getElementById('setAntilink').checked,
+      antispam: document.getElementById('setAntispam').checked,
+      welcome: document.getElementById('setWelcome').checked,
+      goodbye: document.getElementById('setGoodbye').checked,
+      onlyAdmins: document.getElementById('setOnlyAdmins').checked,
+      customWelcome: document.getElementById('setCustomWelcome').value,
+      customGoodbye: document.getElementById('setCustomGoodbye').value,
+    };
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(jid) + '/settings', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data),
+      });
+      if (r.ok) { toast('✅ Salvo!', 'success'); setTimeout(()=>location.reload(), 800); }
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  function openBroadcast(jid, name) {
+    document.getElementById('broadcastJid').value = jid;
+    document.getElementById('broadcastGroupName').textContent = name;
+    document.getElementById('broadcastModal').classList.add('open');
+  }
+
+  document.getElementById('broadcastForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const jid = document.getElementById('broadcastJid').value;
+    const text = document.getElementById('broadcastMsg').value;
+    const mediaUrl = document.getElementById('broadcastMedia').value;
+    const mediaType = document.getElementById('broadcastMedia').selectedOptions[0]?.dataset?.type || '';
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(jid) + '/send', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ text, mediaUrl, mediaType }),
+      });
+      if (r.ok) { toast('📤 Enviado!', 'success'); closeModal('broadcastModal'); }
+      else { const d = await r.json(); toast('❌ ' + d.error, 'error'); }
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  async function viewMembers(jid) {
+    document.getElementById('membersList').innerHTML = '<div class="spinner"></div>';
+    document.getElementById('membersModal').classList.add('open');
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(jid) + '/members');
+      const data = await r.json();
+      const html = (data.members || []).map((m, i) => `
+        <div class="member-item">
+          <span>${i+1}. <span class="num">${m.id.split('@')[0].split(':')[0]}</span> ${m.admin ? '👑' : ''}</span>
+          <span>
+            <button class="btn btn-sm btn-danger" onclick="banMember('${jid}','${m.id}')">🚫</button>
+          </span>
+        </div>
+      `).join('');
+      document.getElementById('membersList').innerHTML = html || '<div class="muted">Sem membros</div>';
+    } catch (e) {
+      document.getElementById('membersList').innerHTML = '<div class="alert alert-error">' + e.message + '</div>';
+    }
+  }
+
+  async function banMember(groupJid, userJid) {
+    if (!confirm('Banir esse usuário?')) return;
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(groupJid) + '/ban', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ userJid }),
+      });
+      if (r.ok) { toast('🚫 Banido', 'warn'); viewMembers(groupJid); }
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function leaveGroup(jid, name) {
+    if (!confirm('Bot vai sair do grupo "'+name+'". Tem certeza?')) return;
+    try {
+      const r = await fetch('/api/groups/' + encodeURIComponent(jid) + '/leave', { method: 'POST' });
+      if (r.ok) { toast('🚪 Saí do grupo', 'warn'); setTimeout(()=>location.reload(), 1000); }
+    } catch (e) { toast(e.message, 'error'); }
+  }
+</script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,153 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>📊 Dashboard</h1>
+        <p class="muted">Bem-vindo, <strong><%= user.name || user.username %></strong> · <%= new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) %></p>
+      </div>
+      <div class="bot-status" id="botStatusBadge">
+        <span class="status-dot status-<%= stats.botStatus %>"></span>
+        <span id="botStatusText"><%= stats.botStatus %></span>
+      </div>
+    </header>
+
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🤖</div>
+        <div class="stat-info">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" id="statBotStatus" style="font-size:1.1rem"><%= stats.botStatus %></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <div class="stat-label">Usuários</div>
+          <div class="stat-value"><%= stats.totalUsers %></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-info">
+          <div class="stat-label">Premium</div>
+          <div class="stat-value"><%= stats.premiumUsers %></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-info">
+          <div class="stat-label">Comandos</div>
+          <div class="stat-value"><%= stats.totalCommands %></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🖼️</div>
+        <div class="stat-info">
+          <div class="stat-label">Mídias</div>
+          <div class="stat-value"><%= stats.totalMedia %></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💬</div>
+        <div class="stat-info">
+          <div class="stat-label">Mensagens</div>
+          <div class="stat-value" id="msgCount"><%= stats.messageCount || 0 %></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🚀 Ações Rápidas</h2>
+      <div class="quick-grid">
+        <% if (user.role === 'owner') { %>
+          <a href="/dashboard/connect" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-cyan)">🔌</div>
+            <div><strong>Conectar Bot</strong><p>QR Code ou Pair Code</p></div>
+          </a>
+          <a href="/dashboard/commands" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-purple)">⚡</div>
+            <div><strong>Comandos</strong><p>Criar, editar, deletar</p></div>
+          </a>
+          <a href="/dashboard/media" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-pink)">🖼️</div>
+            <div><strong>Galeria</strong><p>Upload de fotos/vídeos/GIFs</p></div>
+          </a>
+          <a href="/dashboard/users" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-green)">👥</div>
+            <div><strong>Usuários</strong><p>Free / Premium / Bloqueios</p></div>
+          </a>
+          <a href="/dashboard/broadcast" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-yellow)">📢</div>
+            <div><strong>Broadcast</strong><p>Enviar para todos os grupos</p></div>
+          </a>
+          <a href="/dashboard/console" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-green)">💻</div>
+            <div><strong>Console Live</strong><p>Logs em tempo real</p></div>
+          </a>
+        <% } else { %>
+          <a href="https://wa.me/<%= bot.number %>" target="_blank" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-green)">📱</div>
+            <div><strong>Falar com Bot</strong><p>+<%= bot.number %></p></div>
+          </a>
+          <a href="https://wa.me/<%= owner.number %>" target="_blank" class="quick-card">
+            <div class="quick-icon" style="color:var(--neon-yellow)">👑</div>
+            <div><strong>Dono</strong><p><%= owner.name %></p></div>
+          </a>
+        <% } %>
+      </div>
+    </section>
+
+    <% if (user.role === 'owner') { %>
+    <section class="card">
+      <h2>📜 Atividade em Tempo Real</h2>
+      <div class="console" id="liveConsole" style="height:280px">
+        <div class="console-line log-info">
+          <span class="console-time">[--:--:--]</span> ⚡ Aguardando eventos do bot...
+        </div>
+      </div>
+    </section>
+    <% } %>
+  </main>
+</div>
+
+<script>
+  const socket = io({ reconnection: true });
+  const statusText = document.getElementById('botStatusText');
+  const statusDot = document.querySelector('#botStatusBadge .status-dot');
+  const statBotStatus = document.getElementById('statBotStatus');
+  const msgCount = document.getElementById('msgCount');
+  const liveConsole = document.getElementById('liveConsole');
+
+  socket.on('bot:status', (data) => {
+    if (data.status) {
+      statusText.textContent = data.status;
+      statusDot.className = 'status-dot status-' + data.status;
+      if (statBotStatus) statBotStatus.textContent = data.status;
+    }
+    if (data.messageCount !== undefined && msgCount) msgCount.textContent = data.messageCount;
+  });
+
+  if (liveConsole) {
+    socket.on('bot:log', (data) => {
+      const time = new Date().toLocaleTimeString('pt-BR');
+      const line = document.createElement('div');
+      line.className = `console-line log-${data.level || 'info'}`;
+      line.innerHTML = `<span class="console-time">[${time}]</span> ${data.message}`;
+      liveConsole.appendChild(line);
+      liveConsole.scrollTop = liveConsole.scrollHeight;
+      if (liveConsole.children.length > 100) liveConsole.removeChild(liveConsole.firstChild);
+    });
+  }
+
+  // Atualiza status a cada 10s
+  setInterval(async () => {
+    try {
+      const r = await fetch('/api/bot/status');
+      const d = await r.json();
+      if (d.messageCount !== undefined && msgCount) msgCount.textContent = d.messageCount;
+    } catch (e) {}
+  }, 10000);
+</script>
+<%- include('../partials/footer') %>

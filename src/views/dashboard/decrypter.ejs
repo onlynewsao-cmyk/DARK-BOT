@@ -1,0 +1,313 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>🔓 VPN Decrypter</h1>
+        <p class="muted">Decifre arquivos de configuração de VPN tunnels (HTTP Injector, NPV, HA Tunnel, NetMod, etc)</p>
+      </div>
+      <div class="bot-status" style="background:linear-gradient(135deg,rgba(177,74,237,.2),rgba(0,240,255,.2))">
+        <span style="font-size:1.1rem">🔐</span>
+        <span>ENGINE v1.0</span>
+      </div>
+    </header>
+
+    <% if (!isPremium) { %>
+      <div class="alert alert-warning">
+        <span>⭐</span>
+        <span><strong>Recurso Premium</strong> — Para usar o decrypter, faça upgrade para Premium. <a href="/dashboard/subscribe">Assinar agora →</a></span>
+      </div>
+    <% } %>
+
+    <!-- UPLOAD CARD -->
+    <div class="card" style="background:linear-gradient(135deg,rgba(177,74,237,.08),rgba(0,240,255,.05));border:1px solid var(--neon-purple)">
+      <h2>📤 Upload do arquivo VPN</h2>
+      <p class="muted">Arraste ou clique para selecionar (máx. 10MB)</p>
+
+      <div id="dropZone" style="border:2px dashed var(--neon-purple);border-radius:14px;padding:3rem 2rem;text-align:center;cursor:pointer;background:rgba(0,0,0,0.3);transition:all .3s">
+        <div style="font-size:4rem;margin-bottom:.5rem;filter:drop-shadow(0 0 20px var(--neon-cyan))" id="dropIcon">🔓</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--neon-cyan);margin-bottom:.5rem" id="dropTitle">ARRASTE OU CLIQUE</div>
+        <div class="muted" id="dropDesc">Selecione um arquivo para decifrar</div>
+        <input type="file" id="fileInput" style="display:none" accept=".ehi,.ehic,.hat,.npv,.npv4,.npv7,.npv8,.dark,.darkt,.any,.tls,.conf,.nm,.nmess,.ovpn,.ssh,.ssl,.json,.txt" />
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <h3 style="color:var(--neon-cyan);margin-bottom:.5rem">📁 Formatos suportados:</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+          <span class="chip chip-info">.ehi</span>
+          <span class="chip chip-info">.ehic</span>
+          <span class="chip chip-info">.hat</span>
+          <span class="chip chip-info">.npv4</span>
+          <span class="chip chip-info">.npv7</span>
+          <span class="chip chip-info">.npv8</span>
+          <span class="chip chip-info">.dark</span>
+          <span class="chip chip-info">.darkt</span>
+          <span class="chip chip-info">.any</span>
+          <span class="chip chip-info">.tls</span>
+          <span class="chip chip-info">.nm</span>
+          <span class="chip chip-info">.nmess</span>
+          <span class="chip chip-info">.conf</span>
+          <span class="chip chip-info">.ovpn</span>
+          <span class="chip chip-info">.ssh</span>
+          <span class="chip chip-info">.json</span>
+          <span class="chip chip-info">.txt</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOADING -->
+    <div class="card" id="loadingCard" style="display:none;text-align:center">
+      <div class="spinner"></div>
+      <h3 style="color:var(--neon-cyan);margin-top:1rem">🔓 Decifrando arquivo...</h3>
+      <p class="muted">Analisando estrutura, testando keys, extraindo dados...</p>
+    </div>
+
+    <!-- ERROR -->
+    <div class="card" id="errorCard" style="display:none;border-color:var(--neon-red)">
+      <h2 style="color:var(--neon-red)">❌ Erro</h2>
+      <p id="errorMsg"></p>
+    </div>
+
+    <!-- RESULT -->
+    <div id="resultArea" style="display:none">
+      <!-- Header do resultado -->
+      <div class="card" style="background:linear-gradient(135deg,rgba(0,255,157,.1),rgba(0,240,255,.05));border:1px solid var(--neon-green)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+          <div>
+            <h2 style="color:var(--neon-green);margin:0">✅ Decryptado com sucesso!</h2>
+            <div class="muted mt-1">
+              <span id="resFileName"></span> • <span id="resFileSize"></span> • <span class="chip chip-success" id="resFormat"></span>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="btn btn-sm" onclick="copyAll()">📋 Copiar tudo</button>
+            <button class="btn btn-sm" onclick="downloadJSON()">📥 Baixar JSON</button>
+            <button class="btn btn-sm" onclick="sendToWhats()">📱 Enviar p/ WhatsApp</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de informações -->
+      <div id="resultCards"></div>
+
+      <!-- Raw JSON -->
+      <div class="card">
+        <h2>📄 Dados completos (JSON)</h2>
+        <pre id="rawJson" style="background:#000;color:var(--neon-green);padding:1rem;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;max-height:400px;overflow:auto;border:1px solid var(--neon-green)"></pre>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="card">
+      <h2>📜 Histórico recente</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Data</th><th>Usuário</th><th>Arquivo</th><th>Formato</th><th>Origem</th><th>Status</th></tr></thead>
+          <tbody>
+            <% logs.forEach(l => { %>
+              <tr>
+                <td><%= new Date(l.createdAt).toLocaleString('pt-BR') %></td>
+                <td><%= l.username || '-' %></td>
+                <td><code><%= l.fileName %></code></td>
+                <td><span class="chip"><%= l.format || '?' %></span></td>
+                <td><%= l.source === 'whatsapp' ? '📱' : '💻' %> <%= l.source %></td>
+                <td><% if (l.success) { %><span class="chip chip-success">✅ OK</span><% } else { %><span class="chip" style="color:var(--neon-red)">❌</span><% } %></td>
+              </tr>
+            <% }) %>
+            <% if (!logs.length) { %><tr><td colspan="6" class="text-center muted">Nenhuma decryptação ainda</td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const isPremium = <%= isPremium ? 'true' : 'false' %>;
+  let lastResult = null;
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.onclick = () => fileInput.click();
+  dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background='rgba(177,74,237,.15)'; dropZone.style.borderColor='var(--neon-cyan)'; };
+  dropZone.ondragleave = () => { dropZone.style.background='rgba(0,0,0,0.3)'; dropZone.style.borderColor='var(--neon-purple)'; };
+  dropZone.ondrop = (e) => { e.preventDefault(); dropZone.style.background='rgba(0,0,0,0.3)'; if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); };
+  fileInput.onchange = (e) => { if(e.target.files[0]) processFile(e.target.files[0]); };
+
+  async function processFile(file) {
+    if (!isPremium) { toast('🔒 Recurso Premium! Assine para usar.', 'warn', 5000); return; }
+    if (file.size > 10*1024*1024) { toast('Arquivo > 10MB', 'error'); return; }
+
+    document.getElementById('loadingCard').style.display = 'block';
+    document.getElementById('errorCard').style.display = 'none';
+    document.getElementById('resultArea').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const r = await fetch('/api/decrypt', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin', // garante envio dos cookies
+        headers: { 'Accept': 'application/json' },
+      });
+
+      document.getElementById('loadingCard').style.display = 'none';
+
+      // Detecta sessão expirada (redirecionamento ou HTML)
+      const contentType = r.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Provavelmente HTML (login)
+        if (r.status === 401 || r.status === 403 || r.redirected) {
+          throw new Error('Sessão expirada. Faça login novamente.');
+        }
+        const txt = await r.text();
+        if (txt.includes('<!DOCTYPE') || txt.includes('<html')) {
+          throw new Error('Servidor retornou HTML em vez de JSON. Verifique se está logado e se /api/decrypt existe no servidor.');
+        }
+        throw new Error('Resposta inesperada: ' + txt.slice(0, 200));
+      }
+
+      const d = await r.json();
+      if (!r.ok) {
+        const errMsg = d.error || 'Erro desconhecido';
+        if (r.status === 403) {
+          throw new Error('🔒 ' + errMsg + '\n\nClique no menu Assinar Premium para fazer upgrade.');
+        }
+        throw new Error(errMsg);
+      }
+      lastResult = d;
+      renderResult(d);
+      toast('🎉 Decryptado com sucesso!', 'success');
+    } catch (err) {
+      console.error('Decrypt error:', err);
+      document.getElementById('loadingCard').style.display = 'none';
+      document.getElementById('errorCard').style.display = 'block';
+      document.getElementById('errorMsg').innerHTML = err.message.replace(/\n/g, '<br>');
+
+      if (err.message.includes('Sessão expirada') || err.message.includes('login')) {
+        setTimeout(() => {
+          if (confirm('Sessão expirada. Recarregar página?')) location.reload();
+        }, 1500);
+      }
+    }
+  }
+
+  function renderResult(r) {
+    document.getElementById('resultArea').style.display = 'block';
+    document.getElementById('resFileName').textContent = '📄 ' + r.fileName;
+    document.getElementById('resFileSize').textContent = (r.fileSize/1024).toFixed(1) + ' KB';
+    document.getElementById('resFormat').textContent = r.format;
+    document.getElementById('rawJson').textContent = JSON.stringify(r, null, 2);
+
+    const cards = document.getElementById('resultCards');
+    cards.innerHTML = '';
+
+    // Config info
+    if (r.configName || r.configType || r.appName) {
+      cards.innerHTML += card('🎯', 'CONFIGURAÇÃO', [
+        ['Nome', r.configName], ['Tipo', r.configType], ['App', r.appName],
+        ['Modo', r.configMode || r.mode], ['Nota', r.note],
+      ]);
+    }
+
+    // Server
+    if (r.server && (r.server.host || r.server.port)) {
+      cards.innerHTML += card('🌐', 'SERVIDOR', [
+        ['Host', r.server.host], ['Porta', r.server.port], ['Tipo', r.server.type],
+      ]);
+    }
+
+    // SSH
+    if (r.ssh && (r.ssh.host || r.ssh.user)) {
+      cards.innerHTML += card('🔐', 'SSH', [
+        ['Host', r.ssh.host], ['Porta', r.ssh.port || '22'],
+        ['Usuário', r.ssh.user], ['Senha', r.ssh.pass],
+      ], 'var(--neon-green)');
+    }
+
+    // Proxy
+    if (r.proxy && (r.proxy.host || r.proxy.port)) {
+      cards.innerHTML += card('🛡️', 'PROXY', [
+        ['Host', r.proxy.host], ['Porta', r.proxy.port],
+        ['Tipo', r.proxy.type], ['Usuário', r.proxy.user], ['Senha', r.proxy.pass],
+      ], 'var(--neon-cyan)');
+    }
+
+    // SNI
+    if (r.sni) {
+      cards.innerHTML += card('🔒', 'SNI / TLS', [
+        ['SNI', r.sni], ['TLS Versão', r.tlsVersion],
+      ], 'var(--neon-pink)');
+    }
+
+    // Payload
+    if (r.payload) {
+      cards.innerHTML += `<div class="card" style="border-color:var(--neon-yellow)">
+        <h2 style="color:var(--neon-yellow)">📡 PAYLOAD</h2>
+        <p class="muted mb-2">Método: <strong>${r.payloadMethod || 'CONNECT'}</strong> <button class="btn btn-sm" onclick="copyText(\`${escapeHtml(String(r.payload)).replace(/`/g,'\\`')}\`)" style="margin-left:1rem">📋 Copiar</button></p>
+        <pre style="background:#000;color:var(--neon-yellow);padding:1rem;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.8rem;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all">${escapeHtml(String(r.payload))}</pre>
+      </div>`;
+    }
+
+    // VMess/VLess/Trojan/Shadowsocks
+    if (r.vmess) cards.innerHTML += card('🔮', 'VMESS', Object.entries(r.vmess).map(([k,v]) => [k, v]));
+    if (r.vless) cards.innerHTML += card('🔮', 'VLESS', Object.entries(r.vless).map(([k,v]) => [k, v]));
+    if (r.trojan) cards.innerHTML += card('🐎', 'TROJAN', Object.entries(r.trojan).map(([k,v]) => [k, v]));
+    if (r.shadowsocks) cards.innerHTML += card('🕶️', 'SHADOWSOCKS', Object.entries(r.shadowsocks).map(([k,v]) => [k, v]));
+    if (r.wireguard) cards.innerHTML += card('🛡️', 'WIREGUARD', Object.entries(r.wireguard).map(([k,v]) => [k, v]));
+    if (r.openvpn) cards.innerHTML += card('🔓', 'OPENVPN', Object.entries(r.openvpn).filter(([k,v]) => typeof v !== 'string' || v.length < 500).map(([k,v]) => [k, typeof v === 'boolean' ? (v?'✅':'❌') : v]));
+
+    // DNS
+    if (r.dns && r.dns.length) {
+      cards.innerHTML += card('🌍', 'DNS', r.dns.map((d,i) => [`DNS ${i+1}`, d]));
+    }
+
+    // Extras
+    if (r.allFields && Object.keys(r.allFields).length) {
+      const extras = Object.entries(r.allFields)
+        .filter(([k,v]) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')
+        .filter(([k,v]) => v !== '' && v !== null);
+      if (extras.length) {
+        cards.innerHTML += card('🔧', 'OUTROS CAMPOS', extras.map(([k,v]) => [k, String(v).slice(0, 200)]));
+      }
+    }
+
+    window.scrollTo({ top: document.getElementById('resultArea').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function card(icon, title, items, color = 'var(--neon-purple)') {
+    const rows = items.filter(([k,v]) => v !== '' && v !== null && v !== undefined).map(([k,v]) => `
+      <tr>
+        <td style="color:var(--text-muted);text-transform:uppercase;font-size:.75rem;letter-spacing:1px;width:30%">${escapeHtml(k)}</td>
+        <td><code style="color:${color};word-break:break-all">${escapeHtml(String(v))}</code> <button class="btn btn-sm" onclick="copyText(\`${escapeHtml(String(v)).replace(/`/g,'\\`')}\`)" style="margin-left:.5rem;padding:.2rem .5rem;font-size:.7rem">📋</button></td>
+      </tr>`).join('');
+    if (!rows) return '';
+    return `<div class="card" style="border-color:${color}">
+      <h2 style="color:${color}">${icon} ${title}</h2>
+      <table class="table" style="margin:0"><tbody>${rows}</tbody></table>
+    </div>`;
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function copyText(t) { navigator.clipboard.writeText(t); toast('Copiado!', 'success', 1500); }
+  function copyAll() { navigator.clipboard.writeText(JSON.stringify(lastResult, null, 2)); toast('JSON copiado!', 'success'); }
+  function downloadJSON() {
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = lastResult.fileName + '.decrypted.json';
+    a.click();
+  }
+  async function sendToWhats() {
+    if (!lastResult) return;
+    const num = prompt('Número WhatsApp (com DDI, ex: 244...):');
+    if (!num) return;
+    const r = await fetch('/api/decrypt/send-wa', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ number: num.replace(/\D/g,''), data: lastResult }) });
+    if (r.ok) toast('Enviado!', 'success'); else toast('Erro', 'error');
+  }
+</script>
+<%- include('../partials/footer') %>
