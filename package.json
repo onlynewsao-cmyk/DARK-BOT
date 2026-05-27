@@ -1,0 +1,45 @@
+{
+  "name": "dark-bot",
+  "version": "1.0.0",
+  "description": "DARK BOT - Bot WhatsApp profissional com Dashboard | Dono: Dark Net",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys",
+    "dashboard",
+    "darkbot"
+  ],
+  "author": "Dark Net",
+  "license": "MIT",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.4",
+    "@whiskeysockets/baileys": "^6.7.8",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.5.1",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "mongoose": "^8.8.0",
+    "multer": "^1.4.5-lts.1",
+    "pino": "^9.5.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.33.5",
+    "socket.io": "^4.8.1",
+    "wa-sticker-formatter": "^4.4.4",
+    "yt-search": "^2.13.1",
+    "ytdl-core": "^4.11.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
