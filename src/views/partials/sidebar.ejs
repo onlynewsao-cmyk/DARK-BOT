@@ -1,0 +1,45 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">🤖</div>
+    <div>
+      <div class="brand-name"><%= bot.name %></div>
+      <div class="brand-owner">by <%= owner.name %></div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a href="/dashboard" class="<%= currentPath === '/dashboard' ? 'active' : '' %>">
+      <span class="icon">📊</span> Dashboard
+    </a>
+    <% if (user.role === 'owner') { %>
+      <a href="/dashboard/connect" class="<%= currentPath.startsWith('/dashboard/connect') ? 'active' : '' %>">
+        <span class="icon">🔌</span> Conectar Bot
+      </a>
+      <a href="/dashboard/commands" class="<%= currentPath.startsWith('/dashboard/commands') ? 'active' : '' %>">
+        <span class="icon">⚡</span> Comandos
+      </a>
+      <a href="/dashboard/media" class="<%= currentPath.startsWith('/dashboard/media') ? 'active' : '' %>">
+        <span class="icon">🖼️</span> Mídias
+      </a>
+      <a href="/dashboard/users" class="<%= currentPath.startsWith('/dashboard/users') ? 'active' : '' %>">
+        <span class="icon">👥</span> Usuários
+      </a>
+    <% } %>
+    <a href="/dashboard/profile" class="<%= currentPath.startsWith('/dashboard/profile') ? 'active' : '' %>">
+      <span class="icon">👤</span> Meu Perfil
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar"><%= (user.name || user.username).charAt(0).toUpperCase() %></div>
+      <div>
+        <div class="user-name"><%= user.name || user.username %></div>
+        <div class="user-role role-<%= user.role %>">
+          <% if (user.role === 'owner') { %>👑 Dono<% } else if (user.role === 'premium') { %>⭐ Premium<% } else { %>🆓 Free<% } %>
+        </div>
+      </div>
+    </div>
+    <a href="/logout" class="btn btn-ghost btn-block">🚪 Sair</a>
+  </div>
+</aside>
