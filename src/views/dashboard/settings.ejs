@@ -1,0 +1,80 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>⚙️ Configurações</h1>
+        <p class="muted">Personalize comportamentos globais do bot</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>👋 Boas-vindas / Despedidas</h2>
+      <form id="welcomeForm">
+        <div class="form-group form-check">
+          <label><input type="checkbox" id="welcomeEnabled" <%= settings.welcome_enabled !== false ? 'checked' : '' %> /> Mensagem de boas-vindas ATIVA</label>
+        </div>
+        <div class="form-group">
+          <label>Mensagem ao ENTRAR (use @user e @grupo)</label>
+          <textarea id="welcomeMessage" rows="5"><%= settings.welcome_message || '╭━〔 🌙 *BEM-VINDO* 〕━╮\n│ 👋 Olá @user!\n│ 🎉 Você entrou em *@grupo*\n│ 🤖 Powered by ' + bot.name + '\n╰━━━━━━━━━━━━━━━━━╯' %></textarea>
+        </div>
+        <div class="form-group">
+          <label>Mensagem ao SAIR</label>
+          <textarea id="goodbyeMessage" rows="3"><%= settings.goodbye_message || '👋 @user saiu de *@grupo*. Até mais!' %></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">💾 Salvar</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>🤖 Bot</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nome do Bot</label>
+          <input type="text" value="<%= bot.name %>" disabled />
+          <small class="muted">Definido em variável de ambiente</small>
+        </div>
+        <div class="form-group">
+          <label>Prefixo de comandos</label>
+          <input type="text" value="<%= bot.prefix %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>Número do Bot</label>
+          <input type="text" value="<%= bot.number %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>Dono</label>
+          <input type="text" value="<%= owner.name %> (<%= owner.number %>)" disabled />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎨 Marca d'água em Stickers</h2>
+      <p class="muted">As figurinhas geradas pelo bot contêm automaticamente:</p>
+      <ul style="margin: 1rem 0 0 1.5rem; line-height: 2;">
+        <li>📛 <strong>Pack:</strong> <%= bot.name %> • Dono: <%= owner.name %></li>
+        <li>👤 <strong>Author:</strong> Nome do usuário | Nome do grupo</li>
+      </ul>
+    </div>
+  </main>
+</div>
+<script>
+  document.getElementById('welcomeForm').onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const r = await fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          welcome_enabled: document.getElementById('welcomeEnabled').checked,
+          welcome_message: document.getElementById('welcomeMessage').value,
+          goodbye_message: document.getElementById('goodbyeMessage').value,
+        }),
+      });
+      if (r.ok) toast('Configurações salvas!', 'success');
+      else toast('Erro ao salvar', 'error');
+    } catch (err) { toast(err.message, 'error'); }
+  };
+</script>
+<%- include('../partials/footer') %>

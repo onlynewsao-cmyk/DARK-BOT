@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: dark-bot
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: OWNER_NAME
+        value: Dark Net
+      - key: OWNER_NUMBER
+        value: "244945280380"
+      - key: BOT_NAME
+        value: DARK BOT
+      - key: BOT_NUMBER
+        value: "244949926074"
+      - key: OWNER_USERNAME
+        value: darknet
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false

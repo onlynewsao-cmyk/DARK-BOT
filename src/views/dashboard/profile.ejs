@@ -1,0 +1,44 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>👤 Meu Perfil</h1>
+        <p class="muted">Suas informações no <%= bot.name %></p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="profile-grid">
+        <div class="profile-avatar"><%= (userData.name || userData.username).charAt(0).toUpperCase() %></div>
+        <div>
+          <h2><%= userData.name || userData.username %></h2>
+          <p class="muted">@<%= userData.username %></p>
+          <div class="profile-meta">
+            <div><strong>Tipo:</strong>
+              <% if (userData.role === 'owner') { %>👑 Dono
+              <% } else if (userData.role === 'premium') { %>⭐ Premium
+              <% } else { %>🆓 Free<% } %>
+            </div>
+            <div><strong>WhatsApp:</strong> <%= userData.whatsappNumber || '—' %></div>
+            <div><strong>Comandos usados:</strong> <%= userData.commandsUsed %></div>
+            <% if (userData.premiumUntil) { %>
+              <div><strong>Premium até:</strong> <%= new Date(userData.premiumUntil).toLocaleDateString('pt-BR') %></div>
+            <% } %>
+            <div><strong>Membro desde:</strong> <%= new Date(userData.createdAt).toLocaleDateString('pt-BR') %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <% if (userData.role === 'free') { %>
+      <div class="card upgrade-card">
+        <h2>⭐ Quer virar Premium?</h2>
+        <p>Comandos exclusivos, prioridade no atendimento e muito mais.</p>
+        <a href="https://wa.me/<%= owner.number %>?text=Quero%20ser%20Premium" target="_blank" class="btn btn-primary">📞 Falar com o Dono</a>
+      </div>
+    <% } %>
+  </main>
+</div>
+<%- include('../partials/footer') %>
