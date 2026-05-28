@@ -1,0 +1,455 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>⚡ COMANDOS · LIVE</h1>
+        <p class="muted">Editor + feed ao vivo de comandos executados no WhatsApp · <strong><%= totalCount %></strong> comandos</p>
+      </div>
+      <div class="button-row">
+        <a href="/dashboard/commands/new" class="btn btn-primary">➕ Comando Custom</a>
+        <span class="live-badge" id="liveBadge">
+          <span class="live-dot"></span> LIVE
+        </span>
+      </div>
+    </header>
+
+    <!-- LIVE FEED -->
+    <div class="card" style="border-left:4px solid var(--neon-green)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+        <h2 style="margin:0">📡 FEED DE COMANDOS · TEMPO REAL</h2>
+        <div class="button-row">
+          <span class="muted small" id="cmdCounter">0 cmds desde load</span>
+          <button class="btn btn-sm btn-ghost" onclick="clearFeed()">🗑️ Limpar</button>
+          <button class="btn btn-sm" id="pauseBtn" onclick="togglePause()">⏸️ Pausar</button>
+        </div>
+      </div>
+      <div id="liveFeed" class="live-feed">
+        <div class="feed-empty">
+          <span class="spinner-mini"></span>
+          Aguardando comandos... <em>(executa um comando no WhatsApp pra ver)</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <input type="text" id="searchInput" placeholder="🔍 Buscar comando..." oninput="filterCommands(this.value)" />
+      </div>
+      <div class="button-row" style="flex-wrap:wrap;gap:.4rem">
+        <button class="btn btn-sm" onclick="filterCat('')">📋 Todos</button>
+        <% Object.entries(categories).forEach(([key, cat]) => { %>
+          <button class="btn btn-sm" onclick="filterCat('<%= key %>')" style="border-color:<%= cat.color %>;color:<%= cat.color %>"><%= cat.emoji %> <%= cat.name.replace(/^[^\s]+\s/, '') %></button>
+        <% }); %>
+      </div>
+    </div>
+
+    <% if (customCommands.length) { %>
+    <div class="card" style="border-color:var(--neon-cyan)">
+      <h2>⚙️ Comandos Customizados</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Nome</th><th>Categoria</th><th>Acesso</th><th>Mídia</th><th>Usos</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            <% customCommands.forEach(cmd => { %>
+              <tr class="cmd-row" data-name="<%= cmd.name %>" data-category="<%= cmd.category %>">
+                <td><strong><%= bot.prefix %><%= cmd.name %></strong></td>
+                <td><span class="chip"><%= cmd.category %></span></td>
+                <td>
+                  <% if (cmd.accessLevel === 'owner') { %><span class="chip chip-owner">👑 Dono</span>
+                  <% } else if (cmd.accessLevel === 'premium') { %><span class="chip chip-premium">⭐ Premium</span>
+                  <% } else { %><span class="chip chip-free">🆓 Todos</span><% } %>
+                </td>
+                <td><%= cmd.mediaType || '—' %></td>
+                <td><span class="usage-counter" data-cmd="<%= cmd.name %>"><%= cmd.usageCount || 0 %></span></td>
+                <td><% if (cmd.enabled) { %><span class="chip chip-success">Ativo</span><% } else { %><span class="chip chip-muted">Off</span><% } %></td>
+                <td>
+                  <a href="/dashboard/commands/<%= cmd._id %>/edit" class="btn btn-sm">✏️</a>
+                  <button class="btn btn-sm btn-danger" onclick="delCustom('<%= cmd._id %>')">🗑️</button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <% } %>
+
+    <% Object.entries(catalog).forEach(([catKey, cmds]) => { %>
+      <% if (cmds.length) { %>
+        <% const catInfo = categories[catKey] || { name: catKey, emoji: '📁', color: '#888' }; %>
+        <div class="card cat-section" data-category="<%= catKey %>" style="border-left:4px solid <%= catInfo.color %>">
+          <h2 style="color:<%= catInfo.color %>"><%= catInfo.emoji %> <%= catInfo.name.replace(/^[^\s]+\s/, '') %> <span class="muted" style="font-size:.85rem;font-weight:normal">(<%= cmds.length %>)</span></h2>
+          <div class="commands-grid">
+            <% cmds.forEach(cmd => {
+              const ov = overrides[cmd.name] || {};
+              const enabled = ov.enabled !== false;
+              const emoji = ov.emoji || cmd.emoji;
+              const description = ov.description || cmd.description;
+            %>
+              <div class="command-card cmd-row" data-name="<%= cmd.name %>" data-category="<%= cmd.category %>" id="cmd-<%= cmd.name %>" style="<%= !enabled ? 'opacity:0.5' : '' %>">
+                <div class="command-header">
+                  <span class="command-emoji"><%= emoji %></span>
+                  <div>
+                    <div class="command-name"><%= bot.prefix %><%= cmd.name %></div>
+                  </div>
+                  <span class="command-status">
+                    <% if (cmd.ownerOnly) { %><span class="chip chip-owner" style="font-size:.65rem">👑</span><% } %>
+                    <% if (cmd.premium) { %><span class="chip chip-premium" style="font-size:.65rem">⭐</span><% } %>
+                    <span class="cmd-live-counter" id="live-<%= cmd.name %>" style="display:none;background:var(--neon-green);color:#000;padding:2px 6px;border-radius:8px;font-size:.7rem;font-weight:bold">+0</span>
+                  </span>
+                </div>
+                <div class="command-desc"><%= description %></div>
+                <div class="command-actions">
+                  <button class="btn btn-sm" onclick="editNative('<%= cmd.name %>')">✏️ Editar</button>
+                  <button class="btn btn-sm <%= enabled ? 'btn-danger' : 'btn-success' %>" onclick="toggleNative('<%= cmd.name %>', <%= !enabled %>)">
+                    <%= enabled ? '🔴 Off' : '🟢 On' %>
+                  </button>
+                  <% if (ov.mediaUrl) { %><span title="Tem mídia">🎁</span><% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+    <% }) %>
+
+    <!-- Modal de edição -->
+    <div class="modal" id="editModal">
+      <div class="modal-content" style="max-width:600px">
+        <h2>✏️ Editar Comando <span id="editCmdName"></span></h2>
+        <form id="editForm">
+          <input type="hidden" id="editName" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nome de exibição</label>
+              <input type="text" id="editDisplayName" />
+            </div>
+            <div class="form-group">
+              <label>Emoji</label>
+              <input type="text" id="editEmoji" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descrição</label>
+            <input type="text" id="editDescription" />
+          </div>
+          <div class="form-group">
+            <label>Aliases (vírgula)</label>
+            <input type="text" id="editAliases" />
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Categoria</label>
+              <select id="editCategory">
+                <% Object.entries(categories).forEach(([k,c]) => { %>
+                  <option value="<%= k %>"><%= c.emoji %> <%= c.name.replace(/^[^\s]+\s/, '') %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Acesso</label>
+              <select id="editAccess">
+                <option value="all">🆓 Todos</option>
+                <option value="premium">⭐ Premium</option>
+                <option value="owner">👑 Dono</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Mídia anexa</label>
+              <select id="editMediaUrl">
+                <option value="">— sem —</option>
+                <% medias.forEach(m => { %>
+                  <option value="<%= m.url %>" data-type="<%= m.type %>">[<%= m.type %>] <%= m.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="editMediaType">
+                <option value="">—</option>
+                <option value="image">🖼️ Imagem</option>
+                <option value="video">🎬 Vídeo</option>
+                <option value="gif">✨ GIF</option>
+                <option value="audio">🎵 Áudio</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Resposta customizada (opcional)</label>
+            <textarea id="editResponse" rows="4" placeholder="Use {user}, {bot}, {owner}, {group}"></textarea>
+          </div>
+          <div class="form-grid">
+            <div class="form-group form-check"><label><input type="checkbox" id="editEnabled" checked /> Ativo</label></div>
+            <div class="form-group form-check"><label><input type="checkbox" id="editUseCustom" /> Usar resposta custom</label></div>
+          </div>
+          <div class="button-row">
+            <button type="submit" class="btn btn-primary">💾 Salvar</button>
+            <button type="button" class="btn btn-danger" onclick="resetNative()">🔄 Resetar</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<style>
+  .commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .command-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .command-card:hover { border-color: var(--neon-cyan); transform: translateY(-2px); }
+  .command-card.flash {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 20px rgba(0,255,153,0.6);
+    animation: flashEffect 1.5s;
+  }
+  @keyframes flashEffect {
+    0% { box-shadow: 0 0 30px rgba(0,255,153,0.9); }
+    100% { box-shadow: 0 0 5px rgba(0,255,153,0.2); }
+  }
+  .command-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+  .command-emoji { font-size: 1.5rem; }
+  .command-name { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--neon-cyan); font-size: 0.95rem; }
+  .command-status { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+  .command-desc { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem; min-height: 2rem; }
+  .command-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+  /* Live feed */
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, rgba(0,255,153,0.2), rgba(0,255,153,0.05));
+    border: 1px solid var(--neon-green);
+    padding: 4px 12px; border-radius: 999px;
+    font-family: 'Orbitron', monospace; font-weight: 700;
+    font-size: 0.8rem; color: var(--neon-green);
+  }
+  .live-dot {
+    width: 8px; height: 8px; background: var(--neon-green);
+    border-radius: 50%; box-shadow: 0 0 8px var(--neon-green);
+    animation: liveBlink 1s infinite;
+  }
+  @keyframes liveBlink { 50% { opacity: 0.3; } }
+
+  .live-feed {
+    max-height: 400px; overflow-y: auto;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .feed-empty {
+    text-align: center; padding: 2rem;
+    color: var(--text-muted);
+  }
+  .feed-item {
+    padding: 8px 12px;
+    border-left: 3px solid var(--neon-cyan);
+    margin-bottom: 4px;
+    background: rgba(0,240,255,0.05);
+    border-radius: 4px;
+    animation: slideIn 0.3s;
+    display: flex; gap: 0.5rem; align-items: center;
+    flex-wrap: wrap;
+  }
+  .feed-item.owner { border-left-color: var(--neon-yellow); background: rgba(255,215,0,0.08); }
+  .feed-item.premium { border-left-color: var(--neon-purple); background: rgba(177,74,237,0.08); }
+  @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .feed-time { color: var(--text-muted); font-size: 0.7rem; }
+  .feed-cmd { color: var(--neon-cyan); font-weight: bold; }
+  .feed-user { color: var(--neon-pink); }
+  .feed-group { color: var(--text-muted); font-size: 0.75rem; }
+
+  .spinner-mini {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--neon-cyan);
+    border-radius: 50%; animation: spin 1s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const medias = <%- JSON.stringify(medias) %>;
+  const overrides = <%- JSON.stringify(overrides) %>;
+  let currentCat = '', currentSearch = '';
+  let cmdCount = 0, paused = false;
+  const feed = document.getElementById('liveFeed');
+  const counter = document.getElementById('cmdCounter');
+
+  // ===== Socket.IO LIVE =====
+  try {
+    const socket = io({ transports: ['polling', 'websocket'] });
+
+    socket.on('connect', () => {
+      console.log('✅ Live connected');
+      document.getElementById('liveBadge').style.background = 'linear-gradient(135deg, rgba(0,255,153,0.3), rgba(0,255,153,0.1))';
+    });
+    socket.on('disconnect', () => {
+      console.log('❌ Live disconnected');
+      document.getElementById('liveBadge').style.opacity = '0.5';
+    });
+
+    socket.on('user:command', (data) => {
+      if (paused) return;
+      addToFeed(data);
+      flashCommand(data.command);
+      updateCounter(data.command);
+    });
+  } catch(e) { console.error('Socket failed:', e); }
+
+  function addToFeed(data) {
+    if (feed.querySelector('.feed-empty')) feed.innerHTML = '';
+
+    const time = new Date(data.ts || Date.now()).toLocaleTimeString('pt-BR');
+    const roleClass = data.role || '';
+    const roleIcon = data.role === 'owner' ? '👑' : data.role === 'premium' ? '⭐' : '👤';
+    const groupStr = data.group ? `<span class="feed-group">📍 ${escapeHtml(data.group)}</span>` : '<span class="feed-group">📱 privado</span>';
+
+    const item = document.createElement('div');
+    item.className = 'feed-item ' + roleClass;
+    item.innerHTML =
+      `<span class="feed-time">[${time}]</span>` +
+      `<span>${roleIcon} <span class="feed-user">${escapeHtml(data.user)}</span></span>` +
+      `<span>→</span>` +
+      `<span class="feed-cmd">!${escapeHtml(data.command)}</span>` +
+      groupStr;
+
+    feed.insertBefore(item, feed.firstChild);
+    // Limita a 50
+    while (feed.children.length > 50) feed.removeChild(feed.lastChild);
+
+    cmdCount++;
+    counter.textContent = cmdCount + ' cmds desde load';
+  }
+
+  function flashCommand(cmdName) {
+    const card = document.getElementById('cmd-' + cmdName);
+    if (card) {
+      card.classList.remove('flash');
+      void card.offsetWidth;
+      card.classList.add('flash');
+      // Atualiza contador live
+      const counter = document.getElementById('live-' + cmdName);
+      if (counter) {
+        const cur = parseInt(counter.textContent.replace('+', '')) || 0;
+        counter.textContent = '+' + (cur + 1);
+        counter.style.display = 'inline-block';
+      }
+    }
+  }
+
+  function updateCounter(cmdName) {
+    const usage = document.querySelector('.usage-counter[data-cmd="' + cmdName + '"]');
+    if (usage) usage.textContent = (parseInt(usage.textContent) || 0) + 1;
+  }
+
+  function clearFeed() {
+    feed.innerHTML = '<div class="feed-empty">Feed limpo. Aguardando comandos...</div>';
+    cmdCount = 0;
+    counter.textContent = '0 cmds desde load';
+  }
+
+  function togglePause() {
+    paused = !paused;
+    document.getElementById('pauseBtn').innerHTML = paused ? '▶️ Continuar' : '⏸️ Pausar';
+  }
+
+  function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ===== Filtros + edição (igual antes) =====
+  function filterCommands(text) { currentSearch = text.toLowerCase(); applyFilters(); }
+  function filterCat(cat) { currentCat = cat; applyFilters(); }
+  function applyFilters() {
+    document.querySelectorAll('.cmd-row').forEach(r => {
+      const name = r.dataset.name?.toLowerCase() || '';
+      const cat = r.dataset.category || '';
+      r.style.display = (!currentSearch || name.includes(currentSearch)) && (!currentCat || cat === currentCat) ? '' : 'none';
+    });
+    document.querySelectorAll('.cat-section').forEach(s => {
+      const visible = [...s.querySelectorAll('.cmd-row')].some(r => r.style.display !== 'none');
+      s.style.display = visible ? '' : 'none';
+    });
+  }
+
+  async function editNative(name) {
+    const ov = overrides[name] || {};
+    document.getElementById('editName').value = name;
+    document.getElementById('editCmdName').textContent = '!' + name;
+    document.getElementById('editDisplayName').value = ov.displayName || '';
+    document.getElementById('editEmoji').value = ov.emoji || '';
+    document.getElementById('editDescription').value = ov.description || '';
+    document.getElementById('editAliases').value = (ov.aliases || []).join(', ');
+    document.getElementById('editCategory').value = ov.category || '';
+    document.getElementById('editAccess').value = ov.accessLevel || 'all';
+    document.getElementById('editMediaUrl').value = ov.mediaUrl || '';
+    document.getElementById('editMediaType').value = ov.mediaType || '';
+    document.getElementById('editResponse').value = ov.customResponse || '';
+    document.getElementById('editEnabled').checked = ov.enabled !== false;
+    document.getElementById('editUseCustom').checked = !!ov.useCustomResponse;
+    document.getElementById('editModal').classList.add('open');
+  }
+  function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+  document.getElementById('editMediaUrl').onchange = (e) => {
+    const t = e.target.selectedOptions[0]?.dataset?.type;
+    if (t) document.getElementById('editMediaType').value = t;
+  };
+  document.getElementById('editForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('editName').value;
+    const data = {
+      displayName: document.getElementById('editDisplayName').value,
+      emoji: document.getElementById('editEmoji').value,
+      description: document.getElementById('editDescription').value,
+      aliases: document.getElementById('editAliases').value.split(',').map(s=>s.trim()).filter(Boolean),
+      category: document.getElementById('editCategory').value,
+      accessLevel: document.getElementById('editAccess').value,
+      mediaUrl: document.getElementById('editMediaUrl').value,
+      mediaType: document.getElementById('editMediaType').value,
+      customResponse: document.getElementById('editResponse').value,
+      enabled: document.getElementById('editEnabled').checked,
+      useCustomResponse: document.getElementById('editUseCustom').checked,
+    };
+    const r = await fetch(`/api/commands/override/${name}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
+    });
+    if (r.ok) { toast('✅ Salvo!', 'success'); setTimeout(()=>location.reload(), 800); }
+    else toast('❌ Erro', 'error');
+  };
+  async function toggleNative(name, enabled) {
+    await fetch(`/api/commands/override/${name}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled }) });
+    toast(enabled ? '🟢 Ativado' : '🔴 Desativado', 'success', 1500);
+    setTimeout(()=>location.reload(), 600);
+  }
+  async function resetNative() {
+    if (!confirm('Resetar?')) return;
+    const name = document.getElementById('editName').value;
+    await fetch(`/api/commands/override/${name}`, { method: 'DELETE' });
+    toast('🔄 Resetado', 'success');
+    setTimeout(()=>location.reload(), 600);
+  }
+  async function delCustom(id) {
+    if (!confirm('Deletar?')) return;
+    await fetch('/api/commands/' + id, { method: 'DELETE' });
+    location.reload();
+  }
+</script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,132 @@
+<%- include('partials/head') %>
+<style>
+  .landing {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+  .landing-card {
+    max-width: 600px;
+    background: var(--bg-card);
+    backdrop-filter: blur(30px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+  .landing-logo {
+    font-size: 6rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 30px var(--neon-purple));
+    animation: logoPulse 3s ease-in-out infinite;
+  }
+  .landing-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: var(--gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+  .landing-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+  .landing-tagline {
+    color: var(--neon-cyan);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    font-style: italic;
+  }
+  .landing-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .landing-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  .feature {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.3);
+  }
+  .feature-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .feature-text { font-size: 0.85rem; color: var(--text-muted); }
+  .owner-info {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  .owner-name {
+    color: var(--neon-yellow);
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+  }
+</style>
+
+<div class="landing">
+  <div class="landing-card">
+    <div class="landing-logo">🤖</div>
+    <h1 class="landing-title"><%= bot.name %></h1>
+    <div class="landing-subtitle">⚡ The Dark Side of Automation ⚡</div>
+    <p class="landing-tagline">"In darkness, we automate. In silence, we dominate."</p>
+
+    <div class="landing-buttons">
+      <a href="/login" class="btn btn-primary">🔐 Entrar</a>
+      <a href="/register" class="btn btn-ghost">📝 Criar Conta Free</a>
+    </div>
+
+    <div class="landing-features">
+      <div class="feature">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-text">161+ comandos</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧠</div>
+        <div class="feature-text">IA Integrada</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔓</div>
+        <div class="feature-text">VPN Decrypter</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎮</div>
+        <div class="feature-text">Jogos</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">💰</div>
+        <div class="feature-text">Economia</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⭐</div>
+        <div class="feature-text">Premium</div>
+      </div>
+    </div>
+
+    <div class="owner-info">
+      👑 Powered by <span class="owner-name"><%= owner.name %></span><br>
+      📞 wa.me/<%= owner.number %><br>
+      🤖 Bot: +<%= bot.number %>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

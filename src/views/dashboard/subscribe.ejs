@@ -1,0 +1,119 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>⭐ Assinar Premium</h1>
+        <p class="muted">Desbloqueie recursos exclusivos</p>
+      </div>
+    </header>
+
+    <% if (myPayment) { %>
+      <div class="alert alert-info">
+        <span>ℹ️</span>
+        <span>Você já enviou um pagamento (<%= myPayment.plan %>) em <%= new Date(myPayment.createdAt).toLocaleDateString('pt-BR') %>. Status: <strong><%= myPayment.status %></strong></span>
+      </div>
+    <% } %>
+
+    <section class="stats-grid">
+      <div class="stat-card" style="cursor:pointer" onclick="selectPlan('1mes',1500)">
+        <div class="stat-icon">📅</div>
+        <div><div class="stat-label">1 Mês</div><div class="stat-value">1.500 Kz</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="selectPlan('3meses',4000)">
+        <div class="stat-icon">🗓️</div>
+        <div><div class="stat-label">3 Meses</div><div class="stat-value">4.000 Kz</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="selectPlan('6meses',7500)">
+        <div class="stat-icon">📆</div>
+        <div><div class="stat-label">6 Meses</div><div class="stat-value">7.500 Kz</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="selectPlan('1ano',14000)">
+        <div class="stat-icon">🎯</div>
+        <div><div class="stat-label">1 Ano</div><div class="stat-value">14.000 Kz</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer;border-color:var(--neon-yellow)" onclick="selectPlan('vitalicio',30000)">
+        <div class="stat-icon">👑</div>
+        <div><div class="stat-label">Vitalício</div><div class="stat-value">30.000 Kz</div></div>
+      </div>
+    </section>
+
+    <div class="card">
+      <h2>💳 Como pagar</h2>
+      <div class="alert alert-warning">
+        <span>📱</span>
+        <span><strong>Multicaixa Express:</strong> +<%= owner.number %> (Nome: <%= owner.name %>)</span>
+      </div>
+      <p class="muted">1. Faça a transferência para o número acima<br>2. Tire foto/print do comprovante<br>3. Preencha o formulário abaixo<br>4. Aguarde aprovação (até 24h)</p>
+    </div>
+
+    <div class="card">
+      <h2>📤 Enviar comprovante</h2>
+      <form id="payForm" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Plano escolhido</label>
+            <select name="plan" id="planSel" required>
+              <option value="1mes">1 Mês (1.500 Kz)</option>
+              <option value="3meses">3 Meses (4.000 Kz)</option>
+              <option value="6meses">6 Meses (7.500 Kz)</option>
+              <option value="1ano">1 Ano (14.000 Kz)</option>
+              <option value="vitalicio">Vitalício (30.000 Kz)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor pago</label>
+            <input type="number" name="amount" id="amountInput" required value="1500" />
+          </div>
+          <div class="form-group">
+            <label>Método</label>
+            <select name="method">
+              <option value="multicaixa">Multicaixa Express</option>
+              <option value="unitel_money">Unitel Money</option>
+              <option value="paypay">PayPay</option>
+              <option value="transferencia">Transferência</option>
+              <option value="pix">Pix</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Referência (opcional)</label>
+            <input type="text" name="reference" placeholder="Número da transação" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Seu WhatsApp (DDI+DDD+número)</label>
+          <input type="text" name="whatsappNumber" required value="<%= userData?.whatsappNumber || '' %>" placeholder="244xxxxxxxxx" />
+        </div>
+        <div class="form-group">
+          <label>Comprovante (foto/print)</label>
+          <input type="file" name="receipt" accept="image/*" required />
+        </div>
+        <div class="form-group">
+          <label>Observações (opcional)</label>
+          <textarea name="notes" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">📤 Enviar para análise</button>
+      </form>
+    </div>
+  </main>
+</div>
+<script>
+  const prices = { '1mes':1500, '3meses':4000, '6meses':7500, '1ano':14000, 'vitalicio':30000 };
+  function selectPlan(p, v) {
+    document.getElementById('planSel').value = p;
+    document.getElementById('amountInput').value = v;
+    document.getElementById('payForm').scrollIntoView({ behavior: 'smooth' });
+  }
+  document.getElementById('planSel').onchange = (e) => { document.getElementById('amountInput').value = prices[e.target.value]; };
+  document.getElementById('payForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const r = await fetch('/api/payments', { method:'POST', body: fd });
+    const d = await r.json();
+    if (r.ok) { toast('Pagamento enviado! Aguarde aprovação.', 'success'); setTimeout(()=>location.reload(),1500); }
+    else toast('Erro: '+(d.error||'?'), 'error');
+  };
+</script>
+<%- include('../partials/footer') %>
