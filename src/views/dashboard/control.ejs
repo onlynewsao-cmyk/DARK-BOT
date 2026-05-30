@@ -1,0 +1,236 @@
+<%- include('../partials/head') %>
+<div class="app-shell">
+  <%- include('../partials/sidebar') %>
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1>🎛️ Painel de Controle</h1>
+        <p class="muted">Controle total do bot em um só lugar</p>
+      </div>
+      <div class="bot-status">
+        <span class="status-dot status-<%= botState.status %>"></span>
+        <span><%= botState.status %></span>
+      </div>
+    </header>
+
+    <!-- Quick Actions -->
+    <div class="card" style="border-color:var(--neon-cyan)">
+      <h2>⚡ Ações Rápidas</h2>
+      <div class="button-row" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn btn-primary" onclick="quickAction('restart')">🔄 Restart Bot</button>
+        <button class="btn btn-success" onclick="quickAction('reconnect')">🔌 Reconectar WhatsApp</button>
+        <button class="btn btn-ghost" onclick="quickAction('clearLogs')">🗑️ Limpar Logs</button>
+        <button class="btn btn-ghost" onclick="quickAction('clearCache')">♻️ Limpar Cache</button>
+      </div>
+    </div>
+
+    <!-- Toggles principais -->
+    <div class="card">
+      <h2>🎚️ Controles Globais</h2>
+      <div class="toggles-grid">
+        <div class="toggle-row">
+          <div>
+            <strong>🛡️ Anti-link Global</strong>
+            <div class="muted small">Remove links em grupos (padrão)</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="antilink" <%= settings.antilink_enabled ? 'checked' : '' %> onchange="toggleSetting('antilink_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>🛡️ Anti-spam Global</strong>
+            <div class="muted small">3 spams = ban automático</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="antispam" <%= settings.antispam_enabled ? 'checked' : '' %> onchange="toggleSetting('antispam_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>👋 Boas-vindas em Grupos</strong>
+            <div class="muted small">Saúda novos membros</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="welcome" <%= settings.welcome_enabled !== false ? 'checked' : '' %> onchange="toggleSetting('welcome_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>🧠 IA Auto-resposta</strong>
+            <div class="muted small">Responde quando mencionado</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="aiauto" <%= settings.ai_auto_enabled ? 'checked' : '' %> onchange="toggleSetting('ai_auto_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>👁️ Anti-Delete</strong>
+            <div class="muted small">Recupera msgs apagadas e envia pro dono</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="antidelete" <%= settings.antidelete_enabled ? 'checked' : '' %> onchange="toggleSetting('antidelete_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>🕵️ Modo Espião</strong>
+            <div class="muted small">Tudo aparece no console live</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="spy" <%= settings.spy_enabled ? 'checked' : '' %> onchange="toggleSetting('spy_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>🚫 Auto-reações em comandos</strong>
+            <div class="muted small">⏳/✅/❌ por categoria</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="reactions" <%= settings.reactions_enabled !== false ? 'checked' : '' %> onchange="toggleSetting('reactions_enabled', this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dono info -->
+    <div class="card">
+      <h2>👑 Informações do Dono</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>📛 Nome</label>
+          <input type="text" value="<%= owner.name %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>📱 Número</label>
+          <input type="text" value="<%= owner.number %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>👤 Username Dashboard</label>
+          <input type="text" value="<%= owner.username %>" disabled />
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:.5rem">
+        <span>💡</span>
+        <span>Para mudar essas infos, edite as variáveis <code>OWNER_NAME</code>, <code>OWNER_NUMBER</code>, <code>OWNER_USERNAME</code> no Render.</span>
+      </div>
+    </div>
+
+    <!-- Bot Info -->
+    <div class="card">
+      <h2>🤖 Status do Bot</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Conectado como</label>
+          <input type="text" value="<%= botState.user?.id || 'desconectado' %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>Mensagens recebidas</label>
+          <input type="text" value="<%= botState.messageCount %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>Comandos executados</label>
+          <input type="text" value="<%= botState.commandCount %>" disabled />
+        </div>
+        <div class="form-group">
+          <label>Iniciado em</label>
+          <input type="text" value="<%= botState.startedAt ? new Date(botState.startedAt).toLocaleString('pt-BR') : '—' %>" disabled />
+        </div>
+      </div>
+    </div>
+
+    <!-- Variáveis do .env -->
+    <div class="card">
+      <h2>🔑 Variáveis de Ambiente Detectadas</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Variável</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>MONGODB_URI</code></td><td><span class="chip chip-success">✅ Configurado</span></td></tr>
+            <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td><span class="chip chip-success">✅ Configurado</span></td></tr>
+            <tr><td><code>GROQ_API_KEY</code></td><td><% if (envStatus.groq) { %><span class="chip chip-success">✅ Configurado</span><% } else { %><span class="chip" style="color:var(--neon-red)">❌ Faltando</span><% } %></td></tr>
+            <tr><td><code>GEMINI_API_KEY</code></td><td><% if (envStatus.gemini) { %><span class="chip chip-success">✅ Configurado</span><% } else { %><span class="chip" style="color:var(--neon-red)">❌ Faltando</span><% } %></td></tr>
+            <tr><td><code>APP_URL</code></td><td><code><%= envStatus.appUrl %></code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<style>
+  .toggles-grid {
+    display: grid;
+    gap: .85rem;
+  }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .85rem 1rem;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-3);
+    transition: .3s;
+    border-radius: 26px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 20px; width: 20px;
+    left: 3px; bottom: 3px;
+    background: white;
+    transition: .3s;
+    border-radius: 50%;
+  }
+  .switch input:checked + .slider {
+    background: var(--gradient-1);
+  }
+  .switch input:checked + .slider:before {
+    transform: translateX(24px);
+  }
+</style>
+
+<script>
+  async function toggleSetting(key, value) {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ [key]: value }),
+      });
+      toast(value ? '✅ Ativado' : '🔴 Desativado', 'success', 1500);
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function quickAction(action) {
+    if (action === 'restart' && !confirm('Restart o bot? Vai cair por uns segundos.')) return;
+    try {
+      const r = await fetch('/api/control/' + action, { method: 'POST' });
+      const d = await r.json();
+      toast(d.message || '✅ Feito', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+</script>
+<%- include('../partials/footer') %>

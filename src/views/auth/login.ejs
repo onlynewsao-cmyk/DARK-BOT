@@ -1,0 +1,36 @@
+<%- include('../partials/head') %>
+<div class="auth-wrapper">
+  <div class="auth-bg"></div>
+  <div class="auth-card">
+    <div class="auth-logo">🤖</div>
+    <h1 class="auth-title"><%= bot.name %></h1>
+    <p class="auth-subtitle">Dashboard de Controle · by <%= owner.name %></p>
+
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/login" class="auth-form">
+      <div class="form-group">
+        <label>👤 Usuário</label>
+        <input type="text" name="username" required autofocus placeholder="seu usuário" />
+      </div>
+      <div class="form-group">
+        <label>🔒 Senha</label>
+        <input type="password" name="password" required placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+    </form>
+
+    <div class="auth-divider"><span>ou</span></div>
+
+    <a href="/register" class="btn btn-ghost btn-block">📝 Criar conta Free</a>
+
+    <div class="auth-footer">
+      <span class="badge badge-owner">👑 Dono</span>
+      <span class="badge badge-premium">⭐ Premium</span>
+      <span class="badge badge-free">🆓 Free</span>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
